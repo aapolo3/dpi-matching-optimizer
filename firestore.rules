@@ -1,0 +1,224 @@
+rules_version = '2';
+
+// Firestore is the API (there is no FastAPI). These rules are the access
+// contract. Owners cannot write admin fields (approval metadata,
+// assignedInterns, matchedProject, matchedProjectId), reviewStatus is limited
+// to the initial 'submitted' value, and ownerEmail / users email are pinned to
+// the auth token. createdAt is the server time on owner create and frozen on
+// owner project update, since it sets rank numbers. Rules also cap long text
+// and project title / company, and require projectChoices to be a list. Other
+// field shapes stay app-enforced in website/app.js: denylists and size caps
+// only, no key allowlists, so legacy docs keep saving.
+//
+// Admin promotion is out-of-band: create users/{uid} by signing in, then set
+// role to "admin" in the console. Owners cannot change their own role.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && userData().role == 'admin';
+    }
+
+    function textWithinCap(data, field) {
+      return !(field in data)
+        || (data[field] is string && data[field].size() <= 20000);
+    }
+
+    function shortTextWithinCap(data, field) {
+      return !(field in data)
+        || (data[field] is string && data[field].size() <= 300);
+    }
+
+    function keyCountOk(data) {
+      return data.keys().size() <= 100;
+    }
+
+    function projectTextOk(data) {
+      return shortTextWithinCap(data, 'projectTitle')
+        && shortTextWithinCap(data, 'companyName')
+        && textWithinCap(data, 'description')
+        && textWithinCap(data, 'internLogistics')
+        && textWithinCap(data, 'technicalSkills')
+        && textWithinCap(data, 'officeCulture')
+        && textWithinCap(data, 'notes');
+    }
+
+    function studentTextOk(data) {
+      return textWithinCap(data, 'chicagoEcosystem')
+        && textWithinCap(data, 'whyInternship')
+        && textWithinCap(data, 'additionalAcademics')
+        && textWithinCap(data, 'courseworkOther')
+        && (!('projectChoices' in data) || data.projectChoices is list);
+    }
+
+    function projectAdminFields() {
+      return ['assignedInterns', 'approvedAt', 'approvedByUid', 'approvedByName', 'approvedByEmail'];
+    }
+
+    function studentAdminFields() {
+      return ['matchedProject', 'matchedProjectId'];
+    }
+
+    // Shared owner checks. Admin fields are compared by key so any set, change,
+    // or removal is denied while values already on the doc can stay.
+    function ownerCreateOk(adminFields) {
+      let data = request.resource.data;
+      return data.ownerUid == request.auth.uid
+        && data.createdAt == request.time
+        && data.ownerEmail == request.auth.token.email
+        && data.status in ['draft', 'submitted']
+        && !data.keys().hasAny(adminFields)
+        && (!('reviewStatus' in data) || data.reviewStatus == 'submitted')
+        && keyCountOk(data);
+    }
+
+    function ownerUpdateOk(adminFields) {
+      let data = request.resource.data;
+      let changed = data.diff(resource.data).affectedKeys();
+      return resource.data.ownerUid == request.auth.uid
+        && data.ownerUid == resource.data.ownerUid
+        && data.ownerEmail == request.auth.token.email
+        && data.status in ['draft', 'submitted']
+        && !changed.hasAny(adminFields)
+        && (!changed.hasAny(['reviewStatus'])
+          || (!('reviewStatus' in resource.data)
+            && data.get('reviewStatus', null) == 'submitted'))
+        && keyCountOk(data);
+    }
+
+    function catalogShapeOk() {
+      let fields = ['projectTitle', 'companyName', 'status', 'ownerUid', 'createdAt'];
+      return request.resource.data.keys().hasOnly(fields)
+        && request.resource.data.keys().hasAll(fields)
+        && shortTextWithinCap(request.resource.data, 'projectTitle')
+        && shortTextWithinCap(request.resource.data, 'companyName');
+    }
+
+    // getAfter lets one batch create both docs, and keeps the entry a copy of
+    // the caller's project, so rank order and status cannot be set separately.
+    function catalogMatchesOwnProject(projectId) {
+      let project = getAfter(/databases/$(database)/documents/projects/$(projectId)).data;
+      let entry = request.resource.data;
+      return project.ownerUid == request.auth.uid
+        && entry.ownerUid == request.auth.uid
+        && entry.status == project.status
+        && entry.projectTitle == project.get('projectTitle', '')
+        && entry.companyName == project.get('companyName', '')
+        && entry.createdAt == project.get('createdAt', null);
+    }
+
+    // Project side of the same contract: a project with an entry cannot change
+    // status, title or company unless the entry changes in the same batch.
+    // Legacy projects with no entry yet still save alone.
+    function projectMatchesCatalog(projectId) {
+      let path = /databases/$(database)/documents/catalog/$(projectId);
+      let data = request.resource.data;
+      return !existsAfter(path)
+        || (getAfter(path).data.status == data.status
+          && getAfter(path).data.projectTitle == data.get('projectTitle', '')
+          && getAfter(path).data.companyName == data.get('companyName', ''));
+    }
+
+    match /users/{uid} {
+      allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+
+      // Create is self-only and limited to student|host — no self-promotion.
+      allow create: if isSignedIn()
+        && request.auth.uid == uid
+        && request.resource.data.role in ['host', 'student']
+        && request.resource.data.keys().hasAll(['email', 'displayName', 'role'])
+        && request.resource.data.email == request.auth.token.email
+        && textWithinCap(request.resource.data, 'displayName')
+        && keyCountOk(request.resource.data);
+
+      allow update: if isSignedIn() && (
+        (request.auth.uid == uid
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.email == request.auth.token.email
+          && textWithinCap(request.resource.data, 'displayName')
+          && keyCountOk(request.resource.data))
+        || isAdmin()
+      );
+
+      allow delete: if false;
+    }
+
+    match /projects/{projectId} {
+      // Full docs hold contact details and assigned interns, so only the owner
+      // and admins read them. Students rank from catalog/{projectId}. Editing
+      // stays owner-only via the create/update rules; admins may update
+      // reviewStatus, assignments, and approval metadata.
+      allow read: if isSignedIn()
+        && (resource.data.ownerUid == request.auth.uid || isAdmin());
+
+      allow create: if isSignedIn()
+        && ownerCreateOk(projectAdminFields())
+        && projectTextOk(request.resource.data)
+        && projectMatchesCatalog(projectId);
+
+      allow update: if isSignedIn() && (
+        isAdmin()
+        || (
+          ownerUpdateOk(projectAdminFields())
+          // Legacy docs without createdAt still save; they just cannot add one.
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['createdAt'])
+          && projectTextOk(request.resource.data)
+          && projectMatchesCatalog(projectId)
+        )
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    // Public subset of a project: only what students need to rank it. Listing
+    // is limited to submitted entries, except for admins. A single get may also see an absent doc
+    // or the caller's own draft entry, so a draft save can tell if one exists.
+    match /catalog/{projectId} {
+      allow get: if isSignedIn()
+        && (resource == null
+          || resource.data.status == 'submitted'
+          || resource.data.ownerUid == request.auth.uid
+          || isAdmin());
+
+      allow list: if isSignedIn()
+        && (resource.data.status == 'submitted' || isAdmin());
+
+      allow create, update: if isSignedIn()
+        && catalogShapeOk()
+        && (isAdmin() || catalogMatchesOwnProject(projectId));
+
+      allow delete: if isAdmin();
+    }
+
+    match /students/{studentId} {
+      // Owners edit application fields (status draft|submitted). Admins may
+      // also set reviewStatus / matchedProject for the Kanban board.
+      allow read: if isSignedIn()
+        && (resource.data.ownerUid == request.auth.uid || isAdmin());
+
+      allow create: if isSignedIn()
+        && ownerCreateOk(studentAdminFields())
+        && studentTextOk(request.resource.data);
+
+      allow update: if isSignedIn() && (
+        isAdmin()
+        || (
+          ownerUpdateOk(studentAdminFields())
+          && studentTextOk(request.resource.data)
+        )
+      );
+
+      allow delete: if isAdmin();
+    }
+  }
+}

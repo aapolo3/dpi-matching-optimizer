@@ -1,0 +1,189 @@
+{
+  "_comment": "Source of truth for the generator's skill catalog. Mention counts come from skill_audit.py run against the STI reference workbooks and drive weighted sampling of student skills. Edit `enabled` to add or drop skills.",
+  "topics": ["Engineering", "Data", "Marketing", "Design", "Programming"],
+  "enabled": [
+    "Python",
+    "Marketing",
+    "SQL",
+    "React",
+    "UI/UX Design",
+    "Data Analysis",
+    "Figma",
+    "Canva",
+    "Java",
+    "JavaScript",
+    "HTML",
+    "CSS",
+    "Swift",
+    "Excel",
+    "C++",
+    "R",
+    "Tableau",
+    "Git",
+    "C#",
+    "Kotlin",
+    "TypeScript"
+  ],
+  "added_by_user": ["C++", "R", "Tableau", "Git", "C#", "Kotlin", "TypeScript"],
+  "skills": [
+    {
+      "skill_id": 1,
+      "skill_name": "Python",
+      "topics": ["Engineering", "Data", "Programming"],
+      "host_mentions": 17,
+      "student_mentions": 107
+    },
+    {
+      "skill_id": 2,
+      "skill_name": "Marketing",
+      "topics": ["Marketing"],
+      "host_mentions": 0,
+      "student_mentions": 2
+    },
+    {
+      "skill_id": 3,
+      "skill_name": "SQL",
+      "topics": ["Data"],
+      "host_mentions": 6,
+      "student_mentions": 25
+    },
+    {
+      "skill_id": 4,
+      "skill_name": "React",
+      "topics": ["Engineering"],
+      "host_mentions": 1,
+      "student_mentions": 12
+    },
+    {
+      "skill_id": 5,
+      "skill_name": "UI/UX Design",
+      "topics": ["Design"],
+      "host_mentions": 0,
+      "student_mentions": 3
+    },
+    {
+      "skill_id": 6,
+      "skill_name": "Data Analysis",
+      "topics": ["Data", "Marketing"],
+      "host_mentions": 2,
+      "student_mentions": 3
+    },
+    {
+      "skill_id": 7,
+      "skill_name": "Figma",
+      "topics": ["Design"],
+      "host_mentions": 0,
+      "student_mentions": 4
+    },
+    {
+      "skill_id": 8,
+      "skill_name": "Canva",
+      "topics": ["Marketing", "Design"],
+      "host_mentions": 2,
+      "student_mentions": 4
+    },
+    {
+      "skill_id": 9,
+      "skill_name": "Java",
+      "topics": ["Engineering", "Programming"],
+      "host_mentions": 4,
+      "student_mentions": 71
+    },
+    {
+      "skill_id": 10,
+      "skill_name": "JavaScript",
+      "topics": ["Engineering", "Programming"],
+      "host_mentions": 6,
+      "student_mentions": 37
+    },
+    {
+      "skill_id": 11,
+      "skill_name": "HTML",
+      "topics": ["Design", "Programming"],
+      "host_mentions": 1,
+      "student_mentions": 49
+    },
+    {
+      "skill_id": 12,
+      "skill_name": "CSS",
+      "topics": ["Design", "Programming"],
+      "host_mentions": 0,
+      "student_mentions": 34
+    },
+    {
+      "skill_id": 13,
+      "skill_name": "Swift",
+      "topics": ["Engineering", "Programming"],
+      "host_mentions": 1,
+      "student_mentions": 10
+    },
+    {
+      "skill_id": 14,
+      "skill_name": "Excel",
+      "topics": ["Data", "Marketing"],
+      "host_mentions": 3,
+      "student_mentions": 7
+    },
+    {
+      "skill_id": 15,
+      "skill_name": "C++",
+      "topics": ["Engineering", "Programming"],
+      "host_mentions": 2,
+      "student_mentions": 63
+    },
+    {
+      "skill_id": 16,
+      "skill_name": "R",
+      "topics": ["Data"],
+      "host_mentions": 5,
+      "student_mentions": 11
+    },
+    {
+      "skill_id": 17,
+      "skill_name": "Tableau",
+      "topics": ["Data", "Marketing"],
+      "host_mentions": 6,
+      "student_mentions": 6
+    },
+    {
+      "skill_id": 18,
+      "skill_name": "Git",
+      "topics": ["Engineering", "Programming"],
+      "host_mentions": 0,
+      "student_mentions": 6
+    },
+    {
+      "skill_id": 19,
+      "skill_name": "C#",
+      "topics": ["Engineering", "Programming"],
+      "host_mentions": 0,
+      "student_mentions": 3
+    },
+    {
+      "skill_id": 20,
+      "skill_name": "Kotlin",
+      "topics": ["Engineering", "Programming"],
+      "host_mentions": 0,
+      "student_mentions": 3
+    },
+    {
+      "skill_id": 21,
+      "skill_name": "TypeScript",
+      "topics": ["Engineering", "Programming"],
+      "host_mentions": 0,
+      "student_mentions": 2
+    }
+  ],
+  "deferred": [
+    "Power BI",
+    "MongoDB",
+    "Angular",
+    "Pandas",
+    "Docker",
+    "AWS",
+    "MATLAB",
+    "Linux",
+    "MySQL",
+    "NumPy"
+  ]
+}

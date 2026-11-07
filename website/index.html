@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<!--
+  DPI Matching Optimizer — vanilla JS SPA. There is no URL router.
+  Views: landing, apply-1..4, host, admin, admin-project
+  Navigation: [data-go="view-id"] and header buttons call showView() in app.js.
+
+  Form contracts (renaming these without updating app.js breaks the forms):
+    data-student-field, data-choice, data-multi, data-ack, data-upload
+    data-board-status on Kanban columns
+
+  Script order at the bottom of this file is required. After editing JS/CSS,
+  bump the ?v= cache-bust query params so browsers pick up the new file.
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Discovery Institute Partners | Summer Tech Internship</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css?v=8" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="logo" aria-hidden="true">
+        <!-- Illinois Block I (simplified) -->
+        <svg viewBox="0 0 40 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M8 4h24v8H26v32h6v8H8v-8h6V12H8V4z"
+            fill="#fe7322"
+            stroke="#ffffff"
+            stroke-width="2.5"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </div>
+      <div class="header-title">
+        Discovery Institute Partners | Summer Tech Internship
+      </div>
+      <div class="header-right">
+        <div class="auth-bar" id="auth-bar">
+          <span class="auth-status" id="auth-status" hidden></span>
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-student-app" hidden>
+            My application
+          </button>
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-host-app" hidden>
+            My project
+          </button>
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-admin-board" hidden>
+            Admin
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-sign-in">
+            Sign in with Google
+          </button>
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-sign-out" hidden>
+            Sign out
+          </button>
+        </div>
+        <div class="avatar" id="user-avatar" aria-hidden="true">?</div>
+      </div>
+    </header>
+
+    <!-- LANDING -->
+    <main id="view-landing" class="view is-active" data-view="landing">
+      <div class="landing">
+        <div class="hero">
+          <div>
+            <div class="badge reveal reveal-1">Internship program 2026</div>
+            <h1 class="reveal reveal-2">Get matched to real work.</h1>
+            <p class="hero-lead reveal reveal-3">
+              Tell us about your skills and interests, and we'll pair you with a
+              project team that fits — no cold outreach, no guessing.
+            </p>
+            <div class="hero-actions reveal reveal-4">
+              <button type="button" class="btn btn-primary" data-go="apply-1">
+                Start application
+              </button>
+              <button type="button" class="btn btn-secondary">
+                See past projects
+              </button>
+            </div>
+            <div class="hero-stats reveal reveal-5">
+              <div>
+                <strong>42</strong>
+                <span>Open postings</span>
+              </div>
+              <div>
+                <strong>12</strong>
+                <span>Partner teams</span>
+              </div>
+            </div>
+            <aside class="info-card reveal reveal-6">
+              <h2>Summer Tech Interns</h2>
+              <p>
+                This micro-internship connects early-career college students with
+                hands-on projects and professional experiences to build their
+                technical skills, professional confidence and connections with
+                Chicago's innovation ecosystem.
+              </p>
+            </aside>
+          </div>
+          <div class="hero-media reveal reveal-3">
+            <img
+              class="hero-media-img"
+              src="images/hero.jpeg"
+              alt="Summer Tech Interns cohort gathered outdoors"
+              width="2048"
+              height="1536"
+            />
+          </div>
+        </div>
+
+        <section class="companies-cta reveal reveal-7">
+          <div class="companies-cta-text">
+            <span class="companies-eyebrow">For companies</span>
+            <h2>Want to host interns this summer?</h2>
+            <p>
+              If you'd like to participate in our program, tell us about your
+              project and we'll match you with the right interns.
+            </p>
+          </div>
+          <button type="button" class="btn btn-primary btn-wide" id="btn-apply-host">
+            Apply to host
+          </button>
+        </section>
+
+      </div>
+    </main>
+
+    <!-- ADMIN BOARD -->
+    <main id="view-admin" class="view" data-view="admin">
+      <div class="page page-wide">
+        <div class="admin-live-banner panel reveal reveal-1">
+          <div class="section-title">Applications (Firestore)</div>
+          <p class="page-sub" id="admin-projects-meta">
+            Sign in as an admin to load all host and student applications. To
+            promote an admin: sign in once, then in Firestore set
+            <code>users/{uid}.role</code> to <code>admin</code>.
+          </p>
+
+          <div class="form-footer admin-export-actions">
+            <div class="admin-match-actions-left">
+              <button type="button" class="btn btn-secondary" id="btn-export-students">
+                Export student applications (.xlsx)
+              </button>
+              <button type="button" class="btn btn-secondary" id="btn-export-hosts">
+                Export host applications (.xlsx)
+              </button>
+            </div>
+            <button type="button" class="btn btn-ghost" id="btn-refresh-admin">Refresh</button>
+          </div>
+          <p class="admin-match-status" id="admin-export-status" aria-live="polite"></p>
+
+          <div class="section-title">Host projects</div>
+          <div id="admin-projects-list" class="admin-projects-list"></div>
+
+          <div class="section-title">Student applications</div>
+          <div id="admin-students-list" class="admin-projects-list"></div>
+        </div>
+
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="label">Host projects</div>
+            <div class="value" id="stat-host-projects">0</div>
+            <div class="meta">From Firestore</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">Student applications</div>
+            <div class="value" id="stat-students">0</div>
+            <div class="meta" id="stat-students-meta">From Firestore</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">Drafts</div>
+            <div class="value" id="stat-drafts">0</div>
+            <div class="meta">Not submitted</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">Submitted</div>
+            <div class="value" id="stat-submitted">0</div>
+            <div class="meta">Ready for review</div>
+          </div>
+        </div>
+
+        <div class="board" id="admin-student-board" aria-label="Student applications board">
+          <section class="column waitlisted" data-board-status="waitlisted">
+            <div class="column-head">
+              <h3>Waitlisted</h3>
+              <span class="column-count" data-board-count>0</span>
+            </div>
+            <div class="column-cards" data-board-cards></div>
+          </section>
+
+          <section class="column submitted" data-board-status="submitted">
+            <div class="column-head">
+              <h3>Submitted</h3>
+              <span class="column-count" data-board-count>0</span>
+            </div>
+            <div class="column-cards" data-board-cards></div>
+          </section>
+
+          <section class="column denied" data-board-status="denied">
+            <div class="column-head">
+              <h3>Denied</h3>
+              <span class="column-count" data-board-count>0</span>
+            </div>
+            <div class="column-cards" data-board-cards></div>
+          </section>
+
+          <section class="column reviewing" data-board-status="reviewing">
+            <div class="column-head">
+              <h3>Reviewing</h3>
+              <span class="column-count" data-board-count>0</span>
+            </div>
+            <div class="column-cards" data-board-cards></div>
+          </section>
+
+          <section class="column matched" data-board-status="matched">
+            <div class="column-head">
+              <h3>Matched</h3>
+              <span class="column-count" data-board-count>0</span>
+            </div>
+            <div class="column-cards" data-board-cards></div>
+          </section>
+        </div>
+
+        
+        
+        
+        <section class="admin-match" aria-label="Matching results preview" id="admin-match">
+          <div class="admin-match-head">
+            <div>
+              <span class="badge">Cohort matcher</span>
+              <h2 class="admin-match-title">Matching results</h2>
+              <p class="admin-match-lead">
+                Build a cohort from live Firestore applications, or upload the two
+                compiled Excel workbooks. Results render below as a read-only
+                preview — maximize total compatibility, then cycle alternates.
+              </p>
+            </div>
+            <div class="admin-match-score" id="admin-match-score">
+              <div class="label">Total objective</div>
+              <div class="value" id="admin-score-value">—</div>
+              <div class="meta" id="admin-score-meta">No run yet</div>
+            </div>
+          </div>
+
+          <div class="admin-match-controls panel">
+            <div class="form-grid admin-match-controls-grid">
+              <div class="field">
+                <label for="match-hosts-xlsx">Compiled host applications (.xlsx)</label>
+                <input id="match-hosts-xlsx" class="control" type="file" accept=".xlsx,.xls" />
+              </div>
+              <div class="field">
+                <label for="match-students-xlsx">Compiled student applications (.xlsx)</label>
+                <input id="match-students-xlsx" class="control" type="file" accept=".xlsx,.xls" />
+              </div>
+              <div class="field">
+                <label for="match-solver">
+                  Solver
+                  <span class="hint">stage 2 algorithm</span>
+                </label>
+                <select id="match-solver" class="control">
+                  <option value="ilp" selected>ILP (maximize fit)</option>
+                  <option value="hungarian">Hungarian (seat-optimal)</option>
+                  <option value="gale-shapley">Gale–Shapley (stable bids)</option>
+                  <option value="hybrid">Hybrid (GS → repair → fill)</option>
+                  <option value="compare-all">Compare all</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="match-topk">Top solutions</label>
+                <select id="match-topk" class="control">
+                  <option value="3">3</option>
+                  <option value="5" selected>5</option>
+                </select>
+              </div>
+            </div>
+            <p class="admin-solver-blurb" id="match-solver-blurb">
+              ILP maximizes total compatibility plus team skill bonuses — the production approach.
+            </p>
+            <div class="form-footer admin-match-actions">
+              <div class="admin-match-actions-left">
+                <button type="button" class="btn btn-secondary" id="match-load-firestore">Build from Firestore</button>
+              </div>
+              <button type="button" class="btn btn-primary btn-wide" id="match-run">Run match</button>
+            </div>
+            <p id="match-status" class="admin-match-status"></p>
+            <ul id="match-warnings" class="admin-match-warnings" hidden></ul>
+          </div>
+
+          <div class="stats-row admin-match-stats" id="admin-match-stats">
+            <div class="stat-card">
+              <div class="label">Students</div>
+              <div class="value" data-stat="students">—</div>
+              <div class="meta">In this cohort</div>
+            </div>
+            <div class="stat-card">
+              <div class="label">Projects</div>
+              <div class="value" data-stat="projects">—</div>
+              <div class="meta" data-stat-meta="companies">Upload to begin</div>
+            </div>
+            <div class="stat-card">
+              <div class="label">Assigned</div>
+              <div class="value" data-stat="assigned">—</div>
+              <div class="meta up">Seats filled</div>
+            </div>
+            <div class="stat-card">
+              <div class="label">Unassigned</div>
+              <div class="value" data-stat="unassigned">—</div>
+              <div class="meta warn">Waitlisted + denied</div>
+            </div>
+          </div>
+
+          <div id="admin-solver-compare" class="admin-solver-compare" hidden></div>
+
+          <div class="admin-match-toolbar">
+            <h3>Team placements</h3>
+            <div class="admin-sol-nav">
+              <button type="button" class="btn btn-ghost" id="match-prev" disabled>← Prev</button>
+              <div class="pills" id="admin-sol-pills" aria-label="Solutions"></div>
+              <button type="button" class="btn btn-ghost" id="match-next" disabled>Next →</button>
+            </div>
+          </div>
+
+          <div id="admin-team-grid" class="admin-team-grid">
+            <div class="admin-match-empty">
+              Run a match to see team placements here.
+            </div>
+          </div>
+
+          <div class="admin-leftover-board" id="admin-leftover-board" hidden>
+            <section class="column waitlisted admin-leftover-col">
+              <div class="column-head">
+                <h3>Waitlisted</h3>
+                <span class="column-count" id="admin-waitlisted-count">0</span>
+              </div>
+              <p class="admin-leftover-note">Eligible, but the seats went to stronger fits.</p>
+              <div id="admin-waitlisted"></div>
+            </section>
+
+            <section class="column denied admin-leftover-col">
+              <div class="column-head">
+                <h3>Denied</h3>
+                <span class="column-count" id="admin-denied-count">0</span>
+              </div>
+              <p class="admin-leftover-note">Failed hard gates on every project (GPA and/or availability).</p>
+              <div id="admin-denied"></div>
+            </section>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- ADMIN PROJECT DETAIL -->
+    <main id="view-admin-project" class="view" data-view="admin-project">
+      <div class="page page-wide">
+        <button type="button" class="admin-back-link" id="btn-back-to-projects">
+          ← Back to projects
+        </button>
+
+        <div class="admin-project-hero">
+          <div class="admin-project-hero-title">
+            <h1 class="page-title" id="apd-title">Project</h1>
+            <span class="status-pill" id="apd-status-pill">Submitted</span>
+          </div>
+          <div class="admin-approval-banner" id="apd-approval-banner" hidden>
+            <span class="admin-approval-icon" aria-hidden="true">✓</span>
+            <p id="apd-approval-text"></p>
+          </div>
+        </div>
+
+        <div class="admin-project-layout">
+          <div class="admin-project-main">
+            <section class="apd-card" id="apd-company-card"></section>
+            <section class="apd-card" id="apd-completeness-card"></section>
+            <section class="apd-card" id="apd-details-card"></section>
+            <section class="apd-card" id="apd-assigned-card"></section>
+          </div>
+
+          <aside class="admin-project-sidebar">
+            <section class="apd-card" id="apd-sidebar-status"></section>
+            <section class="apd-card" id="apd-sidebar-matches"></section>
+            <section class="apd-card" id="apd-sidebar-actions"></section>
+          </aside>
+        </div>
+      </div>
+    </main>
+
+    <!-- APPLY STEP 1 -->
+    <main id="view-apply-1" class="view" data-view="apply-1">
+      <div class="page">
+        <h1 class="page-title reveal reveal-1">Your application</h1>
+        <p class="page-sub reveal reveal-2">Step 1 of 4 — tell us the basics.</p>
+
+        <div class="panel reveal reveal-3">
+          <div class="stepper" data-step="1">
+            <div class="step is-current">
+              <div class="step-bar"></div>
+              <div class="step-label">01 Profile</div>
+            </div>
+            <div class="step">
+              <div class="step-bar"></div>
+              <div class="step-label">02 Skills &amp; interests</div>
+            </div>
+            <div class="step">
+              <div class="step-bar"></div>
+              <div class="step-label">03 Availability</div>
+            </div>
+            <div class="step">
+              <div class="step-bar"></div>
+              <div class="step-label">04 Review &amp; submit</div>
+            </div>
+          </div>
+
+          <div class="section-title">Personal information</div>
+          <div class="form-grid">
+            <div class="field">
+              <label for="student-full-name">Full name</label>
+              <input class="control" id="student-full-name" data-student-field="fullName" type="text" autocomplete="name" placeholder="e.g. John Doe" />
+            </div>
+            <div class="field">
+              <label for="student-preferred-name">Preferred name</label>
+              <input class="control" id="student-preferred-name" data-student-field="preferredName" type="text" placeholder="If different from your full name" />
+            </div>
+            <div class="field">
+              <label for="student-pronouns">Pronouns</label>
+              <input class="control" id="student-pronouns" data-student-field="pronouns" type="text" placeholder="e.g. she/her, he/him, they/them" />
+            </div>
+            <div class="field">
+              <label for="student-gender">Gender</label>
+              <input class="control" id="student-gender" data-student-field="gender" type="text" placeholder="e.g. Woman, Man, Non-binary, prefer not to say" />
+            </div>
+            <div class="field">
+              <label for="student-birthday">Birthday</label>
+              <input class="control" id="student-birthday" data-student-field="birthday" type="text" placeholder="xx/xx/xxxx" />
+            </div>
+            <div class="field">
+              <label for="student-age-at-start">What age will you be once the program starts?</label>
+              <input class="control" id="student-age-at-start" data-student-field="ageAtStart" type="text" placeholder="XX" />
+            </div>
+            <div class="field">
+              <label for="student-personal-email">Personal email</label>
+              <input class="control" id="student-personal-email" data-student-field="personalEmail" type="email" autocomplete="email" />
+            </div>
+            <div class="field">
+              <label for="student-school-email">School email</label>
+              <input class="control" id="student-school-email" data-student-field="schoolEmail" type="email" />
+            </div>
+            <div class="field">
+              <label for="student-phone">Phone number</label>
+              <input class="control" id="student-phone" data-student-field="phone" type="tel" placeholder="(   ) ___-____" />
+            </div>
+            <div class="field full">
+              <span class="field-label">Race / ethnicity <span class="hint">(optional — select all that apply)</span></span>
+              <div class="pills" data-multi="raceEthnicity">
+                <button type="button" class="pill" data-value="American Indian or Alaska Native">American Indian or Alaska Native</button>
+                <button type="button" class="pill" data-value="Asian">Asian</button>
+                <button type="button" class="pill" data-value="Black or African American">Black or African American</button>
+                <button type="button" class="pill" data-value="Hispanic or Latino">Hispanic or Latino</button>
+                <button type="button" class="pill" data-value="Middle Eastern or North African">Middle Eastern or North African</button>
+                <button type="button" class="pill" data-value="Native Hawaiian or Pacific Islander">Native Hawaiian or Pacific Islander</button>
+                <button type="button" class="pill" data-value="White">White</button>
+                <button type="button" class="pill" data-value="Prefer not to say">Prefer not to say</button>
+              </div>
+            </div>
+            <div class="field full">
+              <label for="student-mailing-address">Mailing address</label>
+              <input class="control" id="student-mailing-address" data-student-field="mailingAddress" type="text" placeholder="Street address, city, state, zip" />
+            </div>
+            <div class="field full">
+              <label for="student-summer-address">
+                Please indicate below at what address you expect to be living between early June and early August, 2026 (during the summer internship).
+              </label>
+              <input class="control" id="student-summer-address" data-student-field="summerAddress" type="text" placeholder="Street address, city, state, zip" />
+            </div>
+          </div>
+
+          <hr class="divider" />
+          <div class="section-title">Residency &amp; citizenship</div>
+          <div class="form-grid">
+            <div class="field">
+              <label>Do you live in Illinois?</label>
+              <div class="yesno" data-choice="illinoisResident">
+                <button type="button" class="pill is-active" data-value="Yes">Yes</button>
+                <button type="button" class="pill" data-value="No">No</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>Are you a U.S. citizen?</label>
+              <div class="yesno" data-choice="usCitizen">
+                <button type="button" class="pill is-active" data-value="Yes">Yes</button>
+                <button type="button" class="pill" data-value="No">No</button>
+              </div>
+            </div>
+            <div class="field full">
+              <label for="student-illinois-hs">If applicable, what Illinois high school did you attend?</label>
+              <input class="control" id="student-illinois-hs" data-student-field="illinoisHighSchool" type="text" placeholder="High school name, or &quot;Not applicable&quot;" />
+            </div>
+            <div class="field full">
+              <label for="student-non-il-school">
+                Please specify your Non Illinois school name in the space provided below or if you completed a GED or were home schooled.
+              </label>
+              <input class="control" id="student-non-il-school" data-student-field="nonIllinoisSchool" type="text" placeholder="High school name/home schooled/GED" />
+            </div>
+          </div>
+
+          <hr class="divider" />
+          <div class="section-title">Academic information</div>
+          <div class="form-grid">
+            <div class="field">
+              <label for="student-college">College / university</label>
+              <input class="control" id="student-college" data-student-field="college" type="text" />
+            </div>
+            <div class="field">
+              <label for="student-major">Major</label>
+              <input class="control" id="student-major" data-student-field="major" type="text" />
+            </div>
+            <div class="field">
+              <label for="student-minor">Minor</label>
+              <input class="control" id="student-minor" data-student-field="minor" type="text" placeholder="If applicable" />
+            </div>
+            <div class="field">
+              <label for="student-year">Year</label>
+              <input class="control" id="student-year" data-student-field="year" type="text" placeholder="e.g. Junior" />
+            </div>
+            <div class="field">
+              <label for="student-grad-year">Graduation year</label>
+              <input class="control" id="student-grad-year" data-student-field="gradYear" type="text" placeholder="e.g. 2027" />
+            </div>
+            <div class="field">
+              <label for="student-gpa">GPA</label>
+              <input class="control" id="student-gpa" data-student-field="gpa" type="text" placeholder="e.g. 3.7 / 4.0" />
+            </div>
+          </div>
+
+          <hr class="divider" />
+          <div class="section-title">Documents</div>
+          <div class="upload-grid">
+            <div class="upload-field">
+              <span class="field-label">Resume</span>
+              <label class="upload-dropzone" id="upload-resume" data-upload="resume" tabindex="0">
+                <input type="file" id="student-resume-input" accept="application/pdf,.pdf" hidden />
+                <span class="upload-empty">
+                  <span class="upload-icon" aria-hidden="true">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    </svg>
+                  </span>
+                  <strong>Drag &amp; drop or click to upload</strong>
+                  <span class="upload-hint">PDF only, up to 10MB</span>
+                </span>
+                <span class="upload-filled" hidden>
+                  <span class="upload-check" aria-hidden="true">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                      <circle cx="12" cy="12" r="10" fill="currentColor"/>
+                      <path d="M8 12.5l2.5 2.5L16 9.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </span>
+                  <strong class="upload-filename"></strong>
+                  <span class="upload-hint">PDF — Uploaded — click to replace</span>
+                </span>
+              </label>
+            </div>
+            <div class="upload-field">
+              <span class="field-label">Unofficial transcript</span>
+              <label class="upload-dropzone" id="upload-transcript" data-upload="transcript" tabindex="0">
+                <input type="file" id="student-transcript-input" accept="application/pdf,.pdf" hidden />
+                <span class="upload-empty">
+                  <span class="upload-icon" aria-hidden="true">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    </svg>
+                  </span>
+                  <strong>Drag &amp; drop or click to upload</strong>
+                  <span class="upload-hint">PDF only, up to 10MB</span>
+                </span>
+                <span class="upload-filled" hidden>
+                  <span class="upload-check" aria-hidden="true">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                      <circle cx="12" cy="12" r="10" fill="currentColor"/>
+                      <path d="M8 12.5l2.5 2.5L16 9.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </span>
+                  <strong class="upload-filename"></strong>
+                  <span class="upload-hint">PDF — Uploaded — click to replace</span>
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <div class="form-footer">
+            <button type="button" class="btn btn-ghost" data-go="landing">Back</button>
+            <div class="form-footer-end">
+              <p class="form-action-status" id="student-form-status" aria-live="polite"></p>
+              <button type="button" class="btn btn-primary btn-wide" data-go="apply-2">
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- APPLY STEP 2 -->
+    <main id="view-apply-2" class="view" data-view="apply-2">
+      <div class="page">
+        <h1 class="page-title reveal reveal-1">Your application</h1>
+        <p class="page-sub reveal reveal-2">Step 2 of 4 — skills and interests.</p>
+
+        <div class="panel reveal reveal-3">
+          <div class="stepper" data-step="2">
+            <div class="step is-done">
+              <div class="step-bar"></div>
+              <div class="step-label">01 Profile</div>
+            </div>
+            <div class="step is-current">
+              <div class="step-bar"></div>
+              <div class="step-label">02 Skills &amp; interests</div>
+            </div>
+            <div class="step">
+              <div class="step-bar"></div>
+              <div class="step-label">03 Availability</div>
+            </div>
+            <div class="step">
+              <div class="step-bar"></div>
+              <div class="step-label">04 Review &amp; submit</div>
+            </div>
+          </div>
+
+          <div class="section-title">Technical skills</div>
+          <div class="form-block">
+            <span class="field-label">Rate your proficiency in each skill</span>
+            <div class="skill-rating-list" id="student-skill-ratings">
+              <div class="skill-rating-row" data-skill="Python">
+                <span class="skill-rating-name">Python</span>
+                <div class="pills skill-levels" data-skill-choice="Python">
+                  <button type="button" class="pill" data-value="Basic">Basic</button>
+                  <button type="button" class="pill" data-value="Advanced Beginner">Advanced Beginner</button>
+                  <button type="button" class="pill" data-value="Competent">Competent</button>
+                  <button type="button" class="pill" data-value="Proficient">Proficient</button>
+                  <button type="button" class="pill" data-value="Leader / Mastery">Leader / Mastery</button>
+                </div>
+              </div>
+              <div class="skill-rating-row" data-skill="SQL">
+                <span class="skill-rating-name">SQL</span>
+                <div class="pills skill-levels" data-skill-choice="SQL">
+                  <button type="button" class="pill" data-value="Basic">Basic</button>
+                  <button type="button" class="pill" data-value="Advanced Beginner">Advanced Beginner</button>
+                  <button type="button" class="pill" data-value="Competent">Competent</button>
+                  <button type="button" class="pill" data-value="Proficient">Proficient</button>
+                  <button type="button" class="pill" data-value="Leader / Mastery">Leader / Mastery</button>
+                </div>
+              </div>
+              <div class="skill-rating-row" data-skill="Excel">
+                <span class="skill-rating-name">Excel</span>
+                <div class="pills skill-levels" data-skill-choice="Excel">
+                  <button type="button" class="pill" data-value="Basic">Basic</button>
+                  <button type="button" class="pill" data-value="Advanced Beginner">Advanced Beginner</button>
+                  <button type="button" class="pill" data-value="Competent">Competent</button>
+                  <button type="button" class="pill" data-value="Proficient">Proficient</button>
+                  <button type="button" class="pill" data-value="Leader / Mastery">Leader / Mastery</button>
+                </div>
+              </div>
+              <div class="skill-rating-row" data-skill="Figma">
+                <span class="skill-rating-name">Figma</span>
+                <div class="pills skill-levels" data-skill-choice="Figma">
+                  <button type="button" class="pill" data-value="Basic">Basic</button>
+                  <button type="button" class="pill" data-value="Advanced Beginner">Advanced Beginner</button>
+                  <button type="button" class="pill" data-value="Competent">Competent</button>
+                  <button type="button" class="pill" data-value="Proficient">Proficient</button>
+                  <button type="button" class="pill" data-value="Leader / Mastery">Leader / Mastery</button>
+                </div>
+              </div>
+              <div class="skill-rating-row" data-skill="R">
+                <span class="skill-rating-name">R</span>
+                <div class="pills skill-levels" data-skill-choice="R">
+                  <button type="button" class="pill" data-value="Basic">Basic</button>
+                  <button type="button" class="pill" data-value="Advanced Beginner">Advanced Beginner</button>
+                  <button type="button" class="pill" data-value="Competent">Competent</button>
+                  <button type="button" class="pill" data-value="Proficient">Proficient</button>
+                  <button type="button" class="pill" data-value="Leader / Mastery">Leader / Mastery</button>
+                </div>
+              </div>
+              <div class="skill-rating-row" data-skill="Tableau">
+                <span class="skill-rating-name">Tableau</span>
+                <div class="pills skill-levels" data-skill-choice="Tableau">
+                  <button type="button" class="pill" data-value="Basic">Basic</button>
+                  <button type="button" class="pill" data-value="Advanced Beginner">Advanced Beginner</button>
+                  <button type="button" class="pill" data-value="Competent">Competent</button>
+                  <button type="button" class="pill" data-value="Proficient">Proficient</button>
+                  <button type="button" class="pill" data-value="Leader / Mastery">Leader / Mastery</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-block">
+            <span class="field-label">Areas of interest</span>
+            <div class="pills" data-multi="interests">
+              <button type="button" class="pill" data-value="Engineering">Software engineering</button>
+              <button type="button" class="pill" data-value="Data">Data &amp; analytics</button>
+              <button type="button" class="pill" data-value="Design">Product design</button>
+              <button type="button" class="pill" data-value="Marketing">Marketing</button>
+              <button type="button" class="pill" data-value="Research">Research</button>
+            </div>
+          </div>
+
+          <hr class="divider" />
+          <div class="section-title">Coursework</div>
+          <div class="form-block">
+            <span class="field-label">
+              Please select the Mathematics &amp; Computer Science courses you have taken in college and high school:
+            </span>
+            <div class="coursework-groups">
+              <div class="coursework-group">
+                <div class="coursework-group-label">High school</div>
+                <div class="pills" id="student-coursework-hs" data-multi="courseworkHs">
+                  <button type="button" class="pill" data-value="PreAlgebra">PreAlgebra</button>
+                  <button type="button" class="pill" data-value="PreCalculus">PreCalculus</button>
+                  <button type="button" class="pill" data-value="AP Statistics">AP Statistics</button>
+                  <button type="button" class="pill" data-value="AP Calculus AB">AP Calculus AB</button>
+                  <button type="button" class="pill" data-value="AP Calculus BC">AP Calculus BC</button>
+                </div>
+              </div>
+              <div class="coursework-group">
+                <div class="coursework-group-label">College</div>
+                <div class="pills" id="student-coursework-college" data-multi="courseworkCollege">
+                  <button type="button" class="pill" data-value="Calculus">Calculus</button>
+                  <button type="button" class="pill" data-value="Algebra">Algebra</button>
+                  <button type="button" class="pill" data-value="Linear Algebra">Linear Algebra</button>
+                  <button type="button" class="pill" data-value="Differential Equations">Differential Equations</button>
+                  <button type="button" class="pill" data-value="Data Structures">Data Structures</button>
+                  <button type="button" class="pill" data-value="Intro to Java">Intro to Java</button>
+                  <button type="button" class="pill" data-value="Intro Data Science">Intro Data Science</button>
+                </div>
+              </div>
+            </div>
+            <div class="field" style="margin-top: 14px">
+              <label for="student-coursework-other">Other (please specify)</label>
+              <input class="control" id="student-coursework-other" data-student-field="courseworkOther" maxlength="20000" type="text" placeholder="Course name" />
+            </div>
+          </div>
+
+          <hr class="divider" />
+          <div class="form-block">
+            <div class="field">
+              <label for="student-chicago">
+                In a few sentences or more, tell us what working in Chicago's Tech
+                Ecosystem would mean to you?
+                <span class="hint">(300 words maximum)</span>
+              </label>
+              <textarea class="control" id="student-chicago" data-student-field="chicagoEcosystem" maxlength="20000" placeholder="A couple sentences about something you built or contributed to..."></textarea>
+            </div>
+          </div>
+
+          <div class="form-block">
+            <div class="field">
+              <label for="student-why">
+                In a few sentences or more, describe why you are interested in
+                participating in this internship program and the project(s)
+                selected above.
+                <span class="hint">(300 words maximum)</span>
+              </label>
+              <textarea class="control" id="student-why" data-student-field="whyInternship" maxlength="20000" placeholder="A couple sentences about something you built or contributed to..."></textarea>
+            </div>
+          </div>
+
+          <div class="form-block">
+            <div class="field">
+              <label for="student-additional-academics">
+                Please leave any additional information that you would like us to know about your academics in the space provided below.
+              </label>
+              <textarea class="control" id="student-additional-academics" data-student-field="additionalAcademics" maxlength="20000" placeholder="Optional — anything else about your academic background"></textarea>
+            </div>
+          </div>
+
+          <div class="form-footer">
+            <button type="button" class="btn btn-ghost" data-go="apply-1">Back</button>
+            <button type="button" class="btn btn-primary btn-wide" data-go="apply-3">
+              Continue
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- APPLY STEP 3 -->
+    <main id="view-apply-3" class="view" data-view="apply-3">
+      <div class="page">
+        <h1 class="page-title reveal reveal-1">Your application</h1>
+        <p class="page-sub reveal reveal-2">Step 3 of 4 — your availability.</p>
+
+        <div class="panel reveal reveal-3">
+          <div class="stepper" data-step="3">
+            <div class="step is-done">
+              <div class="step-bar"></div>
+              <div class="step-label">01 Profile</div>
+            </div>
+            <div class="step is-done">
+              <div class="step-bar"></div>
+              <div class="step-label">02 Skills &amp; interests</div>
+            </div>
+            <div class="step is-current">
+              <div class="step-bar"></div>
+              <div class="step-label">03 Availability</div>
+            </div>
+            <div class="step">
+              <div class="step-bar"></div>
+              <div class="step-label">04 Review &amp; submit</div>
+            </div>
+          </div>
+
+          <div class="form-block">
+            <span class="field-label">Preferred project length</span>
+            <div class="pills" data-choice="projectLength">
+              <button type="button" class="pill is-active" data-value="Summer only">Summer only</button>
+              <button type="button" class="pill" data-value="Semester-long">Semester-long</button>
+            </div>
+          </div>
+
+          <div class="form-block">
+            <span class="field-label">Type of transportation</span>
+            <div class="pills" data-choice="transportation">
+              <button type="button" class="pill is-active" data-value="Own vehicle">Own vehicle</button>
+              <button type="button" class="pill" data-value="Public transit">Public transit</button>
+              <button type="button" class="pill" data-value="Rideshare">Rideshare</button>
+              <button type="button" class="pill" data-value="Walk / bike">Walk / bike</button>
+              <button type="button" class="pill" data-value="Other">Other</button>
+            </div>
+          </div>
+
+          <div class="form-block">
+            <span class="field-label">Do you have reliable access to a personal laptop/computer?</span>
+            <div class="yesno" data-choice="laptopAccess">
+              <button type="button" class="pill is-active" data-value="Yes">Yes</button>
+              <button type="button" class="pill" data-value="No">No</button>
+            </div>
+          </div>
+
+          <div class="form-block">
+            <div class="field">
+              <label for="student-emergency">Emergency contact name &amp; phone</label>
+              <input class="control" id="student-emergency" data-student-field="emergencyContact" type="text" placeholder="Name and phone number" />
+            </div>
+          </div>
+
+          <hr class="divider" />
+          <div class="section-title">Acknowledgements</div>
+          <div class="form-block">
+            <div class="pills ack-pills" id="student-acknowledgements">
+              <button type="button" class="pill ack-pill" data-ack="ackCommitment" data-value="Program commitment &amp; drop policy">
+                I acknowledge that I am committed to the DPI Summer Tech Interns program. Once I have accepted my spot in the program, I will not drop the program less than 2 weeks prior to the start of the program (by XX/XX/XXXX date) except for a health emergency for myself or a close family member.
+              </button>
+              <button type="button" class="pill ack-pill" data-ack="ackOrientation" data-value="Virtual orientation attendance">
+                I acknowledge that it is required that all participants in DPI Summer Tech Interns attend an Virtual Orientation Session scheduled for XXXXXXX, May XX, X:XX-X:XXp.m.
+              </button>
+              <button type="button" class="pill ack-pill" data-ack="ackAbsences" data-value="Two absences allowed">
+                I acknowledge that I will have two absences allowed.
+              </button>
+              <button type="button" class="pill ack-pill" data-ack="ackProgramDates" data-value="Program start and end dates">
+                I acknowledge that I the program starts XX/XX/XXXX &amp; ends XX/XX/XXXX.
+              </button>
+            </div>
+          </div>
+
+          <hr class="divider" />
+          <div class="section-title">Project preferences</div>
+          <p class="page-sub" id="student-projects-meta">
+            Click projects in the order you prefer them. Your first pick counts most.
+          </p>
+
+          <div class="form-block">
+            <div id="student-project-choices" class="student-project-choices"></div>
+          </div>
+
+          <div class="form-block">
+            <span class="field-label">
+              Happy to be placed anywhere we see a good fit?
+            </span>
+            <div class="yesno" data-choice="anyProjectFits">
+              <button type="button" class="pill" data-value="Yes">Yes</button>
+              <button type="button" class="pill is-active" data-value="No">No</button>
+            </div>
+          </div>
+
+          <div class="form-footer">
+            <button type="button" class="btn btn-ghost" data-go="apply-2">Back</button>
+            <button type="button" class="btn btn-primary btn-wide" data-go="apply-4">
+              Continue
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- APPLY STEP 4 -->
+    <main id="view-apply-4" class="view" data-view="apply-4">
+      <div class="page">
+        <h1 class="page-title reveal reveal-1">Your application</h1>
+        <p class="page-sub reveal reveal-2">Step 4 of 4 — review before you submit.</p>
+
+        <div class="panel reveal reveal-3">
+          <div class="stepper" data-step="4">
+            <div class="step is-done">
+              <div class="step-bar"></div>
+              <div class="step-label">01 Profile</div>
+            </div>
+            <div class="step is-done">
+              <div class="step-bar"></div>
+              <div class="step-label">02 Skills &amp; interests</div>
+            </div>
+            <div class="step is-done">
+              <div class="step-bar"></div>
+              <div class="step-label">03 Availability</div>
+            </div>
+            <div class="step is-current">
+              <div class="step-bar"></div>
+              <div class="step-label">04 Review &amp; submit</div>
+            </div>
+          </div>
+
+          <div class="review-section">
+            <h3>Profile</h3>
+            <div class="kv" id="student-review-profile"></div>
+          </div>
+
+          <hr class="divider" />
+
+          <div class="review-section">
+            <h3>Skills &amp; interests</h3>
+            <div class="kv" id="student-review-skills"></div>
+          </div>
+
+          <hr class="divider" />
+
+          <div class="review-section">
+            <h3>Availability</h3>
+            <div class="kv" id="student-review-availability"></div>
+          </div>
+
+          <div class="form-block" style="margin-top: 8px">
+            <div class="pills ack-pills">
+              <button type="button" class="pill ack-pill" id="student-confirm" data-ack="confirmSubmit">
+                I confirm that the information in this application is accurate and complete.
+              </button>
+            </div>
+          </div>
+
+          <div class="form-footer">
+            <button type="button" class="btn btn-ghost" data-go="apply-3">Back</button>
+            <div class="form-footer-end">
+              <p class="form-action-status" id="student-review-status" aria-live="polite"></p>
+              <div class="form-footer-actions">
+                <button type="button" class="btn btn-ghost" id="btn-student-save-draft">Save draft</button>
+                <button type="button" class="btn btn-primary btn-wide" id="btn-student-submit">
+                  Submit application
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- PROJECT HOST -->
+    <main id="view-host" class="view" data-view="host">
+      <div class="page">
+        <h1 class="page-title reveal reveal-1">Project host application</h1>
+        <p class="page-sub reveal reveal-2">
+          Tell us about your project so we can match you with the right interns.
+        </p>
+
+        <form class="panel panel-host reveal reveal-3" id="host-form">
+          <div class="section-title">Supervisor &amp; organization</div>
+
+          <div class="form-grid">
+            <div class="field">
+              <label for="host-supervisor-name">Project supervisor's name</label>
+              <input class="control" id="host-supervisor-name" name="supervisorName" type="text" autocomplete="name" />
+            </div>
+            <div class="field">
+              <label for="host-supervisor-email">Project supervisor's email</label>
+              <input class="control" id="host-supervisor-email" name="supervisorEmail" type="email" autocomplete="email" />
+            </div>
+            <div class="field full">
+              <label>Will this be the first intern(s) for this supervisor?</label>
+              <div class="yesno" data-choice="firstInterns">
+                <button type="button" class="pill" data-value="Yes">Yes</button>
+                <button type="button" class="pill is-active" data-value="No">No</button>
+              </div>
+            </div>
+            <div class="field full">
+              <label for="host-work-locations">Primary work locations</label>
+              <input
+                class="control"
+                id="host-work-locations"
+                name="workLocations"
+                type="text"
+                placeholder="Street address, city, state, zip"
+              />
+            </div>
+            <div class="field full">
+              <label for="host-innovation-center">Innovation center membership</label>
+              <input
+                class="control"
+                id="host-innovation-center"
+                name="innovationCenter"
+                type="text"
+                placeholder="e.g. name of the center/incubator, or N/A"
+              />
+            </div>
+            <div class="field">
+              <label for="host-company-name">Company Name</label>
+              <input class="control" id="host-company-name" name="companyName" maxlength="300" type="text" />
+            </div>
+          </div>
+
+          <hr class="divider" />
+          <div class="section-title">Project details</div>
+
+          <div class="form-grid">
+            <div class="field full">
+              <label for="host-project-title">Project Title</label>
+              <input
+                class="control"
+                id="host-project-title"
+                name="projectTitle"
+                maxlength="300"
+                type="text"
+                placeholder="Outline the major phases/milestones of the project"
+              />
+            </div>
+            <div class="field full">
+              <label for="host-description">Description <span class="hint">(500 words or less)</span></label>
+              <textarea
+                class="control"
+                id="host-description"
+                name="description"
+                maxlength="20000"
+                placeholder="Project title, then a description of the work, goals, and context."
+              ></textarea>
+            </div>
+          </div>
+
+          <hr class="divider" />
+          <div class="section-title">Intern logistics</div>
+
+          <div class="form-block">
+            <div class="field">
+              <label for="host-intern-logistics">How many interns would you like, and for which weeks?</label>
+              <input
+                class="control"
+                id="host-intern-logistics"
+                name="internLogistics"
+                maxlength="20000"
+                type="text"
+                placeholder="e.g. 2 interns, weeks 1–10"
+              />
+            </div>
+          </div>
+
+          <div class="form-block">
+            <span class="field-label">Will you host your interns for 3 Host days or opt for 2?</span>
+            <div class="pills" data-choice="hostDays">
+              <button type="button" class="pill is-active" data-value="3 Host days">3 Host days</button>
+              <button type="button" class="pill" data-value="2 Host days">2 Host days</button>
+            </div>
+          </div>
+
+          <hr class="divider" />
+          <div class="section-title">Skills &amp; expertise</div>
+
+          <div class="form-block">
+            <div class="field">
+              <label for="host-technical-skills">What technical skills/tools will students interact with on this project?</label>
+              <input
+                class="control"
+                id="host-technical-skills"
+                name="technicalSkills"
+                maxlength="20000"
+                type="text"
+                placeholder="e.g. Python, SQL, Figma, AWS"
+              />
+            </div>
+          </div>
+
+          <div class="form-block">
+            <span class="field-label">
+              Do you have the technical expertise on your team to guide and support
+              your interns' work?
+            </span>
+            <div class="pills" data-choice="expertiseSupport">
+              <button type="button" class="pill is-active" data-value="Yes">Yes</button>
+              <button type="button" class="pill" data-value="No">No</button>
+              <button type="button" class="pill" data-value="Partially">Partially</button>
+            </div>
+          </div>
+
+          <hr class="divider" />
+          <div class="section-title">Project structure</div>
+
+          <div class="form-block">
+            <span class="field-label">
+              Will all students be working on the same project as a team, the same
+              project individually, or different individual projects?
+            </span>
+            <div class="pills" data-choice="projectStructure">
+              <button type="button" class="pill is-active" data-value="Same project, as a team">Same project, as a team</button>
+              <button type="button" class="pill" data-value="Same project, individually">Same project, individually</button>
+              <button type="button" class="pill" data-value="Different individual projects">Different individual projects</button>
+            </div>
+          </div>
+
+          <div class="form-block">
+            <span class="field-label">
+              What project deliverable do you expect? (Select all that apply)
+            </span>
+            <div class="check-grid" id="host-deliverables">
+              <button type="button" class="check-item" data-value="Written report">
+                <span class="check-box"></span>
+                Written report
+              </button>
+              <button type="button" class="check-item" data-value="Prototype / demo">
+                <span class="check-box"></span>
+                Prototype / demo
+              </button>
+              <button type="button" class="check-item" data-value="Presentation">
+                <span class="check-box"></span>
+                Presentation
+              </button>
+              <button type="button" class="check-item" data-value="Codebase / repository">
+                <span class="check-box"></span>
+                Codebase / repository
+              </button>
+              <button type="button" class="check-item" data-value="Dataset / analysis">
+                <span class="check-box"></span>
+                Dataset / analysis
+              </button>
+              <button type="button" class="check-item" data-value="Recommendations doc">
+                <span class="check-box"></span>
+                Recommendations doc
+              </button>
+            </div>
+          </div>
+
+          <hr class="divider" />
+          <div class="section-title">Culture &amp; process</div>
+
+          <div class="form-block">
+            <div class="field">
+              <label for="host-office-culture">Please describe the culture of your office...</label>
+              <textarea
+                class="control"
+                id="host-office-culture"
+                name="officeCulture"
+                maxlength="20000"
+                placeholder="A few sentences about day-to-day office culture"
+              ></textarea>
+            </div>
+          </div>
+
+          <div class="form-block">
+            <span class="field-label">
+              Would you like to be involved with the interviewing and matching process?
+            </span>
+            <div class="pills" data-choice="interviewInvolvement">
+              <button type="button" class="pill is-active" data-value="Yes">Yes</button>
+              <button type="button" class="pill" data-value="No">No</button>
+              <button type="button" class="pill" data-value="Somewhat">Somewhat</button>
+            </div>
+          </div>
+
+          <div class="form-block">
+            <div class="field">
+              <label for="host-notes">Please share anything else you'd like us to know about the project below.</label>
+              <textarea
+                class="control"
+                id="host-notes"
+                name="notes"
+                maxlength="20000"
+                placeholder="Anything else that would help us find the right match"
+              ></textarea>
+            </div>
+          </div>
+
+          <hr class="divider" />
+          <div class="section-title">Other info</div>
+
+          <div class="form-block">
+            <div class="field">
+              <label for="host-company-website">Company website link:</label>
+              <input
+                class="control"
+                id="host-company-website"
+                name="companyWebsite"
+                type="url"
+                placeholder="https://www.example.com"
+              />
+            </div>
+          </div>
+
+          <div class="form-block">
+            <div class="upload-field">
+              <span class="field-label">Logo Submission (Optional)</span>
+              <label class="upload-dropzone" id="upload-logo" data-upload="logo" tabindex="0">
+                <input
+                  type="file"
+                  id="host-logo-input"
+                  accept="image/png,image/jpeg,image/webp,application/pdf,.png,.jpg,.jpeg,.webp,.pdf"
+                  hidden
+                />
+                <span class="upload-empty">
+                  <span class="upload-icon" aria-hidden="true">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    </svg>
+                  </span>
+                  <strong>Drag &amp; drop or click to upload</strong>
+                  <span class="upload-hint">PDF only, up to 10MB</span>
+                </span>
+                <span class="upload-filled" hidden>
+                  <span class="upload-check" aria-hidden="true">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                      <circle cx="12" cy="12" r="10" fill="currentColor"/>
+                      <path d="M8 12.5l2.5 2.5L16 9.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </span>
+                  <strong class="upload-filename"></strong>
+                  <span class="upload-hint">Uploaded — click to replace</span>
+                </span>
+              </label>
+              <p class="upload-inline-status" id="host-upload-status" aria-live="polite"></p>
+            </div>
+          </div>
+
+          <div class="form-block">
+            <button type="button" class="check-item" id="host-logo-consent" data-ack="logoUsageConsent">
+              <span class="check-box"></span>
+              I allow DPI to use my company logo for program materials and matching communications.
+            </button>
+          </div>
+
+          <div class="form-footer">
+            <div class="form-footer-end">
+              <p class="form-action-status" id="host-form-status" aria-live="polite"></p>
+              <div class="form-footer-actions">
+                <button type="button" class="btn btn-ghost" id="btn-save-draft">Save draft</button>
+                <button type="submit" class="btn btn-primary btn-wide" id="btn-submit-project">Submit project</button>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+    </main>
+
+    <div
+      id="student-profile-modal"
+      class="student-profile-modal"
+      hidden
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="student-profile-name"
+    >
+      <div class="student-profile-backdrop" id="student-profile-close-backdrop"></div>
+      <div class="student-profile-card">
+        <header class="student-profile-head">
+          <div>
+            <p class="student-profile-kicker" id="student-profile-kicker">Applicant</p>
+            <h3 id="student-profile-name">Student</h3>
+          </div>
+          <button type="button" class="btn btn-ghost" id="student-profile-close" aria-label="Close profile">Close</button>
+        </header>
+        <div class="student-profile-body" id="student-profile-body"></div>
+      </div>
+    </div>
+
+    <!-- Script order is required: Firebase SDK → config → app. Admin-only scripts (SheetJS, cohort, matcher, alts, match UI) are loaded by loadAdminBundle() in app.js. Bump ?v= after JS edits. -->
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-app-check-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-storage-compat.js"></script>
+    <script src="firebase-config.js?v=1"></script>
+    <script src="app.js?v=20"></script>
+  </body>
+</html>

@@ -1,0 +1,61 @@
+rules_version = '2';
+
+// File API for the SPA. Paths must stay aligned with website/app.js uploads:
+//   students/{uid}/resume/resume.pdf          PDF < 10MB
+//   students/{uid}/transcript/transcript.pdf  PDF < 10MB
+//   projects/{uid}/logo/logo                  png/jpeg/webp/pdf < 10MB
+// Fixed names are enforced on write only; legacy files stay readable/deletable.
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isPdfUnder10mb() {
+      return request.resource != null
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType == 'application/pdf';
+    }
+
+    function isLogoUnder10mb() {
+      return request.resource != null
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType in [
+          'image/png',
+          'image/jpeg',
+          'image/webp',
+          'application/pdf'
+        ];
+    }
+
+    // Student application PDFs: resume + unofficial transcript.
+    match /students/{uid}/{docType}/{fileName} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if isOwner(uid)
+        && ((docType == 'resume' && fileName == 'resume.pdf')
+          || (docType == 'transcript' && fileName == 'transcript.pdf'))
+        && isPdfUnder10mb();
+      allow delete: if isOwner(uid) || isAdmin();
+    }
+
+    // Host project logo (images + PDF).
+    match /projects/{uid}/{docType}/{fileName} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if isOwner(uid)
+        && docType == 'logo'
+        && fileName == 'logo'
+        && isLogoUnder10mb();
+      allow delete: if isOwner(uid) || isAdmin();
+    }
+  }
+}
